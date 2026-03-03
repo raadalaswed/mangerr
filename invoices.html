@@ -78,10 +78,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-if(!localStorage.getItem("storeId")){
-    localStorage.setItem("storeId", crypto.randomUUID());
-}
-const storeId = localStorage.getItem("storeId");
+const storeId = "main_store_001"; // ثابت لكل الصفحات
 
 function addLog(action, description){
     const now = new Date();
@@ -183,3 +180,4 @@ onValue(ref(db, `stores/${storeId}/invoices`), snapshot=>{
 </script>
 </body>
 </html>
+
