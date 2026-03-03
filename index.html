@@ -21,7 +21,7 @@ table{width:100%;margin-top:30px;border-collapse:collapse;background:#1e293b;}
 th,td{padding:12px;text-align:center}
 th{background:#334155}
 tr:nth-child(even){background:#1a2335}
-.charts{display:flex;flex-wrap:wrap;gap:20px;margin-top:30px}
+.charts{display:flex;flex-wrap:wrap;gap:20px;margin-top:30px;align-items:center;justify-content:center}
 canvas{background:rgba(255,255,255,.05);border-radius:15px;padding:15px}
 </style>
 </head>
@@ -126,8 +126,8 @@ onValue(ref(db, `stores/${storeId}`), snapshot=>{
     document.getElementById("totalCustomers").innerText = totalCustomers;
     document.getElementById("openInvoices").innerText = openInvoices;
 
-    drawPieChart();
-    drawBarChart();
+    animatePieChart();
+    animateBarChart();
 });
 
 // 🔹 آخر الحركات
@@ -153,54 +153,63 @@ onValue(ref(db, `stores/${storeId}/logs`), snapshot=>{
     });
 });
 
-// 🔹 رسم PieChart للمدفوع والمتبقي
-function drawPieChart(){
+// 🔹 PieChart متحرك للمدفوع والمتبقي
+function animatePieChart(){
     const canvas = document.getElementById("pieChart");
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     let paid = 0;
     let remaining = 0;
-
     allInvoices.forEach(inv=>{
         paid += Number(inv.paid || 0);
         remaining += Number(inv.remaining || 0);
     });
 
-    const total = paid + remaining;
-    const paidAngle = (paid/total)*2*Math.PI;
-    const remainingAngle = (remaining/total)*2*Math.PI;
+    const total = paid + remaining || 1;
+    const targetPaidAngle = (paid/total)*2*Math.PI;
+    const targetRemainingAngle = (remaining/total)*2*Math.PI;
 
-    // دائرة المدفوع
-    ctx.beginPath();
-    ctx.moveTo(150,150);
-    ctx.fillStyle="#22c55e";
-    ctx.arc(150,150,100,0,paidAngle);
-    ctx.fill();
+    let currentAngle = 0;
+    const step = 0.02;
 
-    // دائرة المتبقي
-    ctx.beginPath();
-    ctx.moveTo(150,150);
-    ctx.fillStyle="#ef4444";
-    ctx.arc(150,150,100,paidAngle,paidAngle+remainingAngle);
-    ctx.fill();
+    function draw(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        // مدفوع
+        ctx.beginPath();
+        ctx.moveTo(150,150);
+        ctx.fillStyle="#22c55e";
+        ctx.arc(150,150,100,0,Math.min(currentAngle,targetPaidAngle));
+        ctx.fill();
+        // متبقي
+        ctx.beginPath();
+        ctx.moveTo(150,150);
+        ctx.fillStyle="#ef4444";
+        if(currentAngle>targetPaidAngle)
+            ctx.arc(150,150,100,targetPaidAngle,currentAngle);
+        ctx.fill();
+        // نصوص
+        ctx.fillStyle="#fff";
+        ctx.font="16px Arial";
+        ctx.fillText("المدفوع: "+paid+" د.ع", 80, 270);
+        ctx.fillText("المتبقي: "+remaining+" د.ع", 220, 270);
 
-    // كتابة النسب
-    ctx.fillStyle="#fff";
-    ctx.font="16px Arial";
-    ctx.fillText("المدفوع: "+paid+" د.ع", 80, 270);
-    ctx.fillText("المتبقي: "+remaining+" د.ع", 220, 270);
+        if(currentAngle<targetPaidAngle+targetRemainingAngle) {
+            currentAngle += step;
+            requestAnimationFrame(draw);
+        }
+    }
+    draw();
 }
 
-// 🔹 رسم BarChart لأكبر 5 زبائن دينًا
-function drawBarChart(){
+// 🔹 BarChart متحرك لأكبر 5 زبائن دينًا
+function animateBarChart(){
     const canvas = document.getElementById("barChart");
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     if(allCustomers.length===0) return;
 
-    // حساب ديون كل زبون
     let debts = {};
     allInvoices.forEach(inv=>{
         if(!debts[inv.customer]) debts[inv.customer]=0;
@@ -213,19 +222,28 @@ function drawBarChart(){
 
     const barWidth = 50;
     const maxDebt = Math.max(...top5.map(x=>x[1])) || 1;
+    let progress = 0;
+    const steps = 50;
 
-    top5.forEach((entry,index)=>{
-        const x = 50 + index*70;
-        const y = 250 - (entry[1]/maxDebt*200);
-        const height = entry[1]/maxDebt*200;
-
-        ctx.fillStyle="#3b82f6";
-        ctx.fillRect(x,y,barWidth,height);
-        ctx.fillStyle="#fff";
-        ctx.font="12px Arial";
-        ctx.fillText(entry[0], x, 265);
-        ctx.fillText(entry[1]+" د.ع", x, y-5);
-    });
+    function draw(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        top5.forEach((entry,index)=>{
+            const x = 50 + index*70;
+            const height = (entry[1]/maxDebt)*200*(progress/steps);
+            const y = 250 - height;
+            ctx.fillStyle=`hsl(${index*60},70%,50%)`;
+            ctx.fillRect(x,y,barWidth,height);
+            ctx.fillStyle="#fff";
+            ctx.font="12px Arial";
+            ctx.fillText(entry[0], x, 265);
+            ctx.fillText(Math.round(entry[1])+" د.ع", x, y-5);
+        });
+        if(progress<steps){
+            progress++;
+            requestAnimationFrame(draw);
+        }
+    }
+    draw();
 }
 </script>
 
