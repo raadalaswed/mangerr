@@ -4,67 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>الفواتير | دفتر الزبائن</title>
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",sans-serif}
 body{background:#0f172a;color:#fff;display:flex;min-height:100vh}
-
-/* SIDEBAR */
-.sidebar{
-    width:240px;
-    background:#1e293b;
-    padding:30px 20px;
-}
+.sidebar{width:240px;background:#1e293b;padding:30px 20px}
 .logo{text-align:center;margin-bottom:40px}
-.sidebar a{
-    display:block;
-    padding:12px;
-    margin-bottom:10px;
-    color:#cbd5e1;
-    text-decoration:none;
-    border-radius:8px;
-    transition:.3s;
-}
-.sidebar a:hover,
-.sidebar .active{
-    background:#3b82f6;
-    color:#fff;
-}
-
-/* MAIN */
+.sidebar a{display:block;padding:12px;margin-bottom:10px;color:#cbd5e1;text-decoration:none;border-radius:8px;transition:.3s;}
+.sidebar a:hover,.sidebar .active{background:#3b82f6;color:#fff}
 .main{flex:1;padding:30px}
-
-.form-box{
-    background:rgba(255,255,255,.05);
-    padding:20px;
-    border-radius:15px;
-    margin-bottom:30px;
-}
-
-select,input{
-    padding:10px;
-    margin:5px;
-    border:none;
-    border-radius:6px;
-}
-
-button{
-    padding:8px 12px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-}
-
+.form-box{background:rgba(255,255,255,.05);padding:20px;border-radius:15px;margin-bottom:30px}
+select,input{padding:10px;margin:5px;border:none;border-radius:6px}
+button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
 .btn-primary{background:#3b82f6;color:#fff}
 .btn-danger{background:#ef4444;color:#fff}
 .btn-success{background:#22c55e;color:#fff}
-
-/* TABLE */
-table{
-    width:100%;
-    border-collapse:collapse;
-    background:#1e293b;
-}
+table{width:100%;border-collapse:collapse;background:#1e293b;margin-top:20px;}
 th,td{padding:12px;text-align:center}
 th{background:#334155}
 tr:nth-child(even){background:#1a2335}
@@ -88,7 +42,6 @@ tr:nth-child(even){background:#1a2335}
         <select id="customerSelect">
             <option value="">اختر زبون</option>
         </select>
-
         <input type="number" id="invoiceAmount" placeholder="مبلغ الفاتورة">
         <input type="number" id="invoicePaid" placeholder="المبلغ المدفوع (اختياري)">
         <button class="btn-primary" onclick="addInvoice()">إضافة فاتورة</button>
@@ -112,7 +65,6 @@ tr:nth-child(even){background:#1a2335}
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getDatabase, ref, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
@@ -131,7 +83,6 @@ if(!localStorage.getItem("storeId")){
 }
 const storeId = localStorage.getItem("storeId");
 
-// 🔹 سجل الحركات
 function addLog(action, description){
     const now = new Date();
     set(ref(db, `stores/${storeId}/logs/${Date.now()}`),{
@@ -143,12 +94,11 @@ function addLog(action, description){
     });
 }
 
-// 🔹 تحميل الزبائن للقائمة
+// تحميل الزبائن للقائمة
 onValue(ref(db, `stores/${storeId}/customers`), snapshot=>{
     const data = snapshot.val();
     const select = document.getElementById("customerSelect");
     select.innerHTML = '<option value="">اختر زبون</option>';
-
     if(data){
         Object.entries(data).forEach(([id,c])=>{
             select.innerHTML += `<option value="${c.name}">${c.name}</option>`;
@@ -156,7 +106,6 @@ onValue(ref(db, `stores/${storeId}/customers`), snapshot=>{
     }
 });
 
-// 🔹 إضافة فاتورة
 window.addInvoice = function(){
     const customer = document.getElementById("customerSelect").value;
     const total = Number(document.getElementById("invoiceAmount").value);
@@ -178,8 +127,7 @@ window.addInvoice = function(){
     addLog("إضافة فاتورة","فاتورة بقيمة "+total+" للزبون "+customer);
 };
 
-// 🔹 إضافة دفعة
-window.addPayment = function(id,total,paid){
+window.addPayment = function(id,total,paid,customer){
     const amount = Number(prompt("ادخل مبلغ الدفعة"));
     if(!amount) return;
 
@@ -187,22 +135,21 @@ window.addPayment = function(id,total,paid){
     const newRemaining = total - newPaid;
 
     update(ref(db, `stores/${storeId}/invoices/${id}`),{
-        paid:newPaid,
-        remaining:newRemaining
+        paid: newPaid,
+        remaining: newRemaining
     });
 
-    addLog("إضافة دفعة","تم دفع "+amount+" لفاتورة");
+    addLog("إضافة دفعة","تم دفع "+amount+" للزبون "+customer);
 };
 
-// 🔹 حذف فاتورة
-window.deleteInvoice = function(id){
+window.deleteInvoice = function(id,customer){
     if(confirm("هل تريد حذف الفاتورة؟")){
         remove(ref(db, `stores/${storeId}/invoices/${id}`));
-        addLog("حذف فاتورة","تم حذف فاتورة رقم "+id);
+        addLog("حذف فاتورة","تم حذف فاتورة للزبون "+customer);
     }
 };
 
-// 🔹 عرض الفواتير
+// عرض الفواتير
 onValue(ref(db, `stores/${storeId}/invoices`), snapshot=>{
     const data = snapshot.val();
     const table = document.getElementById("invoicesTable");
@@ -221,20 +168,18 @@ onValue(ref(db, `stores/${storeId}/invoices`), snapshot=>{
             <td>${inv.paid}</td>
             <td>${inv.remaining}</td>
             <td>
-                <button class="btn-success" onclick="addPayment('${id}',${inv.total},${inv.paid})">
+                <button class="btn-success" onclick="addPayment('${id}',${inv.total},${inv.paid},'${inv.customer}')">
                 دفعة
                 </button>
             </td>
             <td>
-                <button class="btn-danger" onclick="deleteInvoice('${id}')">
+                <button class="btn-danger" onclick="deleteInvoice('${id}','${inv.customer}')">
                 حذف
                 </button>
             </td>
         </tr>`;
     });
 });
-
 </script>
-
 </body>
 </html>
