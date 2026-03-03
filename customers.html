@@ -120,10 +120,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // إنشاء storeId
-if(!localStorage.getItem("storeId")){
-    localStorage.setItem("storeId", crypto.randomUUID());
-}
-const storeId = localStorage.getItem("storeId");
+const storeId = "main_store_001"; // ثابت لكل الصفحات
 
 // 🔹 نظام سجل الحركات
 function addLog(action, description){
@@ -195,4 +192,5 @@ onValue(ref(db, `stores/${storeId}/customers`), snapshot=>{
 </script>
 
 </body>
+
 </html>
