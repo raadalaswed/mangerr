@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل الحركات | دفتر الزبائن</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",sans-serif}
+body{background:#0f172a;color:#fff;display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+    width:240px;
+    background:#1e293b;
+    padding:30px 20px;
+}
+.logo{text-align:center;margin-bottom:40px}
+.sidebar a{
+    display:block;
+    padding:12px;
+    margin-bottom:10px;
+    color:#cbd5e1;
+    text-decoration:none;
+    border-radius:8px;
+    transition:.3s;
+}
+.sidebar a:hover,
+.sidebar .active{
+    background:#3b82f6;
+    color:#fff;
+}
+
+/* MAIN */
+.main{flex:1;padding:30px}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:#1e293b;
+    margin-top:20px;
+}
+th,td{padding:12px;text-align:center}
+th{background:#334155}
+tr:nth-child(even){background:#1a2335}
+
+button{
+    padding:6px 10px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.btn-danger{background:#ef4444;color:#fff}
+select,input{padding:8px;margin:5px;border-radius:6px;border:none}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2 class="logo">دفتر الزبائن</h2>
+    <a href="index.html">لوحة التحكم</a>
+    <a href="customers.html">الزبائن</a>
+    <a href="invoices.html">الفواتير</a>
+    <a href="logs.html" class="active">سجل الحركات</a>
+</div>
+
+<div class="main">
+    <h1>سجل الحركات</h1>
+
+    <div>
+        <select id="filterSelect" onchange="filterLogs()">
+            <option value="">عرض الكل</option>
+            <option value="إضافة زبون">إضافة زبون</option>
+            <option value="حذف زبون">حذف زبون</option>
+            <option value="إضافة فاتورة">إضافة فاتورة</option>
+            <option value="حذف فاتورة">حذف فاتورة</option>
+            <option value="إضافة دفعة">إضافة دفعة</option>
+        </select>
+        <button class="btn-danger" onclick="clearLogs()">مسح السجل</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>العملية</th>
+                <th>الوصف</th>
+                <th>التاريخ</th>
+                <th>الوقت</th>
+            </tr>
+        </thead>
+        <tbody id="logsTable">
+            <tr><td colspan="4">لا توجد بيانات</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC7EVNCSl48CQgIC_a8wdC5UG2tKLtNKjQ",
+  authDomain: "garag-system.firebaseapp.com",
+  databaseURL: "https://garag-system-default-rtdb.firebaseio.com",
+  projectId: "garag-system"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+if(!localStorage.getItem("storeId")){
+    localStorage.setItem("storeId", crypto.randomUUID());
+}
+const storeId = localStorage.getItem("storeId");
+
+let allLogs = [];
+
+// 🔹 عرض السجل
+onValue(ref(db, `stores/${storeId}/logs`), snapshot=>{
+    const data = snapshot.val();
+    const table = document.getElementById("logsTable");
+    table.innerHTML="";
+    allLogs=[];
+
+    if(!data){
+        table.innerHTML="<tr><td colspan='4'>لا توجد بيانات</td></tr>";
+        return;
+    }
+
+    // ترتيب الأحدث أولاً
+    const sorted = Object.values(data).sort((a,b)=>b.timestamp-a.timestamp);
+    allLogs = sorted;
+
+    sorted.forEach(log=>{
+        table.innerHTML += `
+        <tr>
+            <td>${log.action}</td>
+            <td>${log.description}</td>
+            <td>${log.date}</td>
+            <td>${log.time}</td>
+        </tr>`;
+    });
+});
+
+// 🔹 تصفية السجل
+window.filterLogs = function(){
+    const filter = document.getElementById("filterSelect").value;
+    const table = document.getElementById("logsTable");
+    table.innerHTML="";
+
+    const filtered = filter ? allLogs.filter(l=>l.action===filter) : allLogs;
+
+    if(filtered.length===0){
+        table.innerHTML="<tr><td colspan='4'>لا توجد بيانات</td></tr>";
+        return;
+    }
+
+    filtered.forEach(log=>{
+        table.innerHTML += `
+        <tr>
+            <td>${log.action}</td>
+            <td>${log.description}</td>
+            <td>${log.date}</td>
+            <td>${log.time}</td>
+        </tr>`;
+    });
+};
+
+// 🔹 مسح السجل
+window.clearLogs = function(){
+    if(confirm("هل تريد مسح كل السجل؟")){
+        remove(ref(db, `stores/${storeId}/logs`));
+    }
+};
+
+</script>
+
+</body>
+</html>
